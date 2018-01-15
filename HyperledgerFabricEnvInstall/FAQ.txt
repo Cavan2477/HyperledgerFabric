@@ -1,0 +1,50 @@
+一、准备相关配置文件
+1.生成组织关系和身份证书
+cryptogen generate --config=./crypto-config.yaml --output ./crypto-config
+依据crypto-config.yaml配置文件生成
+
+tree -L 4 crypto-config
+
+2.生成Ordering服务启动初始区块(简单solo模式，生产环境使用kafka)
+configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./orderer.genesis.block
+
+默认放置于/etc/hyperledger/fabric下
+
+3.生成新建通道的配置交易文件
+configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./businesschannel.tx -channelID ${CHANNEL_NAME}
+
+4.生成锚点配置更新文件
+configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./Org1MSPanchors.tx -channelID ${CHANNEL_NAME} -asOrg Org1MSP
+configtxgen -profile TwoOrgsChannel -outputAnchorPeersUpdate ./Org2MSPanchors.tx -channelID ${CHANNEL_NAME} -asOrg Org2MSP
+
+
+
+FAQ：
+----------------------------------------------------------------------------
+1.orderer start无法启动
+orderer start 
+
+错误提示：
+Could not find profile:  SampleInsecureSolo
+panic: Could not find profile: SampleInsecureSolo
+
+
+CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp peer channel create -o orderer.example.com:7050 -c ${CHANNEL_NAME} -f ./businesschannel.tx --tls --cafile /etc/hyperledger/fabric/crypto-config/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem
+
+Error: Error connecting due to  rpc error: code = Unavailable desc = grpc: the connection is unavailable
+
+----------------------------------------------------------------------------
+2.peer start无法启动
+启动命令：
+docker exec -it cli bash
+
+效果如下：
+root@fb44fc4b99b8:/opt/gopath/src/github.com/hyperledger/fabric/peer# 
+
+执行命令
+peer channel create -o orderer.example.com:7050 -c mychannel -f ./channel-artifacts/channel.tx --tls $CORE_PEER_TLS_ENABLED --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/ordererOrganizations/example.com/orderers/orderer.example.com/msp/cacerts/ca.example.com-cert.pem  
+
+错误提示：
+[grpc] Printf -> DEBU 003 Failed to dial orderer.example.com:7050: connection error: desc = "transport: authentication handshake failed: x509: certificate signed by unknown authority"
+
+/opt/go/src/runtime/panic.go:500 +0x1a1
